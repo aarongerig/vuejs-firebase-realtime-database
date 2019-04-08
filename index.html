@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Vue.js Firebase Chat Room</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+          integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <script src="https://www.gstatic.com/firebasejs/5.9.3/firebase.js"></script>
+    <script src="https://unpkg.com/vue"></script>
+</head>
+<body>
+<div id="chat" class="container">
+    <h1>Vue.js Firebase Chat Room</h1>
+
+    <div class="card" v-for="message in messages">
+        <div class="card-body">
+            <h6 class="card-subtitle mb-2 text-muted">{{ message.nickname }}</h6>
+            <p class="card-text">{{ message.text }}</p>
+        </div>
+    </div>
+
+    <hr>
+
+    <form @submit.prevent="storeMessage">
+        <div class="form-group">
+            <label for="text">Text:</label>
+            <textarea id="text" class="form-control" v-model="messageText"></textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="nickname">Nickname:</label>
+            <input type="text" id="nickname" class="form-control" v-model="nickname">
+        </div>
+
+        <button class="btn btn-primary">Send</button>
+    </form>
+</div>
+
+<script type="text/javascript">
+  // Initialize Firebase
+  const config = {
+    apiKey: "AIzaSyCKXokLj2_pmwEdRPICT_xBrzi8grnA_NI",
+    authDomain: "vue-firebase-chat-room.firebaseapp.com",
+    databaseURL: "https://vue-firebase-chat-room.firebaseio.com",
+    projectId: "vue-firebase-chat-room",
+    storageBucket: "vue-firebase-chat-room.appspot.com",
+    messagingSenderId: "1063495394220"
+  };
+  firebase.initializeApp(config);
+  const database = firebase.database();
+  const messagesRef = database.ref('messages');
+
+  new Vue({
+    el: '#chat',
+
+    data: {
+      messages: [],
+      messageText: '',
+      nickname: 'hootlex'
+    },
+
+    methods: {
+      storeMessage() {
+        messagesRef.push({ text: this.messageText, nickname: this.nickname });
+        this.messageText = '';
+      }
+    },
+
+    created() {
+      messagesRef.on('child_added', snapshot => this.messages.push(snapshot.val()));
+    }
+  });
+</script>
+</body>
+</html>
