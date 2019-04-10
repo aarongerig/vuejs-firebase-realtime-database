@@ -4,7 +4,9 @@
     <title>Vue.js Firebase Chat Room</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
           integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://unpkg.com/native-toast@2.0.0/dist/native-toast.css">
     <script src="https://www.gstatic.com/firebasejs/5.9.3/firebase.js"></script>
+    <script src="https://unpkg.com/native-toast@2.0.0/dist/native-toast.min.js"></script>
     <script src="https://unpkg.com/vue"></script>
 </head>
 <body>
@@ -14,13 +16,23 @@
     <div class="card" v-for="message in messages">
         <div class="card-body">
             <h6 class="card-subtitle mb-2 text-muted">{{ message.nickname }}</h6>
-            <p class="card-text">{{ message.text }}</p>
+            <p v-if="message !== editingMessage"class="card-text">{{ message.text }}</p>
+            <textarea v-else class="form-control" v-model="messageText"></textarea>
+
+            <div v-if="message !== editingMessage">
+                <a @click.prevent="deleteMessage(message)" href="#" class="card-link">delete</a>
+                <a @click.prevent="editMessage(message)" href="#" class="card-link">edit</a>
+            </div>
+            <div v-else>
+                <a @click.prevent="cancelEditing" href="#" class="card-link">cancel</a>
+                <a @click.prevent="updateMessage" href="#" class="card-link">update</a>
+            </div>
         </div>
     </div>
 
     <hr>
 
-    <form @submit.prevent="storeMessage">
+    <form v-if="!editingMessage" @submit.prevent="storeMessage">
         <div class="form-group">
             <label for="text">Text:</label>
             <textarea id="text" class="form-control" v-model="messageText"></textarea>
@@ -53,20 +65,71 @@
     el: '#chat',
 
     data: {
+      editingMessage: null,
       messages: [],
       messageText: '',
       nickname: 'hootlex'
     },
 
     methods: {
+      cancelEditing() {
+        this.editingMessage = null;
+        this.messageText = '';
+      },
+      deleteMessage(message) {
+        messagesRef.child(message.id).remove();
+      },
+      editMessage(message) {
+        this.editingMessage = message;
+        this.messageText = message.text;
+      },
       storeMessage() {
         messagesRef.push({ text: this.messageText, nickname: this.nickname });
         this.messageText = '';
+      },
+      updateMessage() {
+        messagesRef.child(this.editingMessage.id).update({ text: this.messageText });
+        this.cancelEditing();
       }
     },
 
     created() {
-      messagesRef.on('child_added', snapshot => this.messages.push(snapshot.val()));
+      messagesRef.on('child_added', snapshot => {
+        this.messages.push({ ...snapshot.val(), id: snapshot.key });
+        if (snapshot.val().nickname !== this.nickname) {
+          nativeToast({
+            message: `New message by ${snapshot.val().nickname}`,
+            position: 'south',
+            rounded: true,
+            type: 'success',
+          })
+        }
+      });
+      messagesRef.on('child_removed', snapshot => {
+        const deletedMessage = this.messages.find(message => message.id === snapshot.key);
+        const index = this.messages.indexOf(deletedMessage);
+        this.messages.splice(index, 1);
+        if (snapshot.val().nickname !== this.nickname) {
+          nativeToast({
+            message: `Message deleted by ${snapshot.val().nickname}`,
+            position: 'south',
+            rounded: true,
+            type: 'warning',
+          })
+        }
+      });
+      messagesRef.on('child_changed', snapshot => {
+        const updatedMessage = this.messages.find(message => message.id === snapshot.key);
+        updatedMessage.text = snapshot.val().text;
+        if (snapshot.val().nickname !== this.nickname) {
+          nativeToast({
+            message: `Message edited by ${snapshot.val().nickname}`,
+            position: 'south',
+            rounded: true,
+            type: 'info',
+          })
+        }
+      });
     }
   });
 </script>
